@@ -166,6 +166,6 @@ You can upload your own peptide datasets through the sidebar:
 
 ## Author
 
-Alejandro Lopez and Brian Andrade 
-Department of Computer Science 
+Alejandro Lopez and Brian Andrade<br>
+Department of Computer Science<br>
 California State Univeristy - Los Angeles
