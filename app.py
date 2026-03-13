@@ -6,26 +6,6 @@ import umap.umap_ as umap
 import numpy as np
 import os
 
-# NEIGHBORHOOD PRESERVATION
-from sklearn.neighbors import NearestNeighbors
-
-def neighborhood_preservation(X_high, X_low, k=10):
-
-    nn_high = NearestNeighbors(n_neighbors=k+1, metric="cosine").fit(X_high)
-    high_neighbors = nn_high.kneighbors(return_distance=False)[:, 1:]
-
-    nn_low = NearestNeighbors(n_neighbors=k+1, metric="euclidean").fit(X_low)
-    low_neighbors = nn_low.kneighbors(return_distance=False)[:, 1:]
-
-    overlaps = []
-
-    for i in range(len(X_high)):
-        overlap = len(np.intersect1d(high_neighbors[i], low_neighbors[i]))
-        overlaps.append(overlap / k)
-
-    return np.mean(overlaps)
-
-
 #cfg class: allows for reproducibility with the same results
 class CFG: 
     #path files 
