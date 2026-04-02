@@ -1,0 +1,9 @@
+{
+    "best_params": {
+        "method": "densMAP 4d",
+        "n_neighbors": 26,
+        "min_dist": 0.043029072337434617,
+        "dens_lambda": 0.1248522938528205
+    },
+    "best_score": 0.9128901340827323
+}

@@ -5,6 +5,7 @@ import plotly.express as px
 import umap.umap_ as umap
 import numpy as np
 import os
+from utils.sphere_projection import project_embeddings_to_sphere
 
 #cfg class: allows for reproducibility with the same results
 class CFG: 
@@ -64,6 +65,7 @@ def run_umap(
     reducer = umap.UMAP(**reducer_kwargs)
 
     return reducer.fit_transform(X)
+
 
 
 #streamlit page setup
@@ -235,6 +237,10 @@ if method == "densMAP":
     dens_var_shift = st.sidebar.slider("dens_var_shift", 0.0, 1.0, 0.1)
 
 
+# NEW: 3D Sphere Toggle
+st.sidebar.header("3D Visualization")
+use_sphere = st.sidebar.checkbox("Project onto sphere (3D view)")
+
 
 # Run UMAP (cached)
 start = time.time()
@@ -253,6 +259,25 @@ X_umap = run_umap(
 )
 
 runtime = time.time() - start
+
+
+# NEW: optional 3D sphere projection
+if use_sphere:
+
+    X_umap_3d = run_umap(
+        X,
+        CFG.n_neighbors,
+        CFG.min_dist,
+        3,
+        CFG.metric,
+        CFG.seed,
+        method,
+        dens_lambda,
+        dens_frac,
+        dens_var_shift,
+    )
+
+    X_umap_3d = project_embeddings_to_sphere(X)
 
 
 #Baseline Metrics
@@ -289,6 +314,35 @@ fig.update_traces(marker=dict(size=4, opacity=0.6))
 
 st.plotly_chart(fig, width="stretch")
 
+
+# NEW: 3D Sphere Visualization
+if use_sphere:
+
+    st.subheader("3D Sphere Projection")
+
+    sphere_df = pd.DataFrame({
+        "x": X_umap_3d[:, 0],
+        "y": X_umap_3d[:, 1],
+        "z": X_umap_3d[:, 2],
+        "id": df["id"],
+        "sequence": df["sequence"],
+        "is_amp": df["is_amp"],
+    })
+
+    fig3d = px.scatter_3d(
+        sphere_df,
+        x="x",
+        y="y",
+        z="z",
+        color="is_amp",
+        color_discrete_map={False: "blue", True: "red"},
+        hover_data=["id", "sequence"],
+        title="Peptide Embeddings on Sphere",
+    )
+
+    fig3d.update_traces(marker=dict(size=3, opacity=0.7))
+
+    st.plotly_chart(fig3d, width="stretch")
 
 # Debug Table
 with st.expander("Show first 10 peptides"):
