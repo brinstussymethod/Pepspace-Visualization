@@ -1,10 +1,9 @@
 {
     "best_params": {
-        "method": "densMAP",
+        "method": "densMAP 5d",
         "n_neighbors": 32,
         "min_dist": 0.22155051614601964,
         "dens_lambda": 0.2302130804076386
     },
     "best_score": 0.9301016241346381
 }
-//5d 
