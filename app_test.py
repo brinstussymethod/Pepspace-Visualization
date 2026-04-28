@@ -6,6 +6,7 @@ import pandas as pd
 import plotly.express as px
 import umap.umap_ as umap
 import numpy as np
+from sklearn.manifold import trustworthiness
 from utils.sphere_projection import project_embeddings_to_sphere
 
 
@@ -17,15 +18,13 @@ class CFG:
     VELTRI_PATH = "data/veltri/all_veltri.csv"
     # Default parameters (used as fallback if no Optuna JSON exists)
     n_neighbors = 5
-    n_components = 2
+    n_components = 3  # default to 3D so both plots show on load
     min_dist = 0.005527128631029834
     metric = "cosine"
     seed = 42
 
 
 # --- Load Optuna params from JSON files ---
-# Expects files named: optuna_results/2d_params.json, 3d_params.json, etc.
-# Each file should have a "best_params" key with n_neighbors, min_dist, dens_lambda
 OPTUNA_PARAMS = {}
 for dim in [2, 3, 4, 5, 6, 7, 8]:
     path = f"optuna_results/{dim}d_params.json"
@@ -86,9 +85,8 @@ st.title("UMAP/DensMAP — ProteoGPT - Veltri Embeddings")
 
 # --- File uploaders ---
 st.sidebar.header("Upload Local Files")
-
 uploaded_embeddings = st.sidebar.file_uploader("Upload embeddings (.npy)", type=["npy"])
-uploaded_metadata = st.sidebar.file_uploader("Upload metadata (.csv)", type=["csv"])
+uploaded_metadata   = st.sidebar.file_uploader("Upload metadata (.csv)", type=["csv"])
 
 
 # --- Data source selection ---
@@ -98,7 +96,6 @@ meta_choice = st.sidebar.radio(
     ["Veltri metadata (recommended)", "Raw Veltri CSV (all_veltri.csv)"],
     index=0,
 )
-
 selected_meta_path = (
     CFG.META_PATH
     if meta_choice == "Veltri metadata (recommended)"
@@ -148,12 +145,10 @@ def pick_col(df: pd.DataFrame, candidates: list[str]) -> str | None:
     return None
 
 
-# Auto-detect columns
 seq_col   = pick_col(meta, ["sequence", "aa_seq", "seq", "peptide", "peptide_sequence", "amp_sequence"])
 id_col    = pick_col(meta, ["peptide_id", "id", "identifier", "name", "entry", "accession"])
 label_col = pick_col(meta, ["source", "label", "class", "family", "dataset", "type"])
 
-# Manual column override if auto-detection fails
 st.sidebar.header("Column Override (if auto detection fails)")
 cols = list(meta.columns)
 
@@ -179,7 +174,6 @@ df = pd.DataFrame({
     "sequence": meta[seq_col].astype(str)   if seq_col   else "",
 })
 
-# AMP detection
 if "is_amp" in meta.columns:
     df["is_amp"] = meta["is_amp"].astype(bool)
 elif "AMP" in meta.columns:
@@ -197,26 +191,25 @@ if nX != nM:
     df = df.iloc[:n]
 
 
-# --- Dimension selection ---
-# User picks how many UMAP dimensions to compute (2–8)
+# --- UMAP Settings ---
 st.sidebar.header("UMAP Settings")
 
-CFG.n_components = st.sidebar.selectbox(
-    "Dimensions",
-    options=[2, 3, 4, 5, 6, 7, 8],
+# Sphere dimension: controls the 3D sphere projection only.
+# The 2D plot always uses a separate 2D UMAP run.
+sphere_dims = st.sidebar.selectbox(
+    "Sphere Dimensions (3D plot)",
+    options=[3, 4, 5, 6, 7, 8],
     index=0,
+    help="Controls how many dimensions UMAP reduces to before projecting onto the sphere. The 2D plot always uses 2D UMAP independently."
 )
 
-# Warn if no Optuna results exist for this dimension
-if CFG.n_components not in OPTUNA_PARAMS:
+if sphere_dims not in OPTUNA_PARAMS:
     st.sidebar.warning(
-        f"No Optuna results found for {CFG.n_components}D — parameters not validated."
+        f"No Optuna results found for {sphere_dims}D — parameters not validated."
     )
 
 
 # --- Parameter inputs: synced slider + number input ---
-# User can type any value directly; slider provides a quick visual control
-
 st.sidebar.markdown("**n_neighbors**")
 col1, col2 = st.sidebar.columns([3, 1])
 nn = col1.slider("##nn_slider", 2, 200, CFG.n_neighbors, label_visibility="collapsed")
@@ -264,112 +257,255 @@ if method == "densMAP":
     )
 
 
-# --- 3D visualization controls (only shown for 3D–8D) ---
-point_size = 3
-opacity    = 0.7
-zoom       = 1.5
-if CFG.n_components >= 3:
-    st.sidebar.header("3D Visualization")
-    point_size = st.sidebar.slider("Point size", 1, 10, 3)
-    opacity    = st.sidebar.slider("Opacity", 0.1, 1.0, 0.7, 0.05)
-    # Zoom moves the camera closer/further from the sphere
-    zoom       = st.sidebar.slider("Zoom", 0.5, 3.0, 1.5, 0.1)
+# --- 3D visualization controls ---
+st.sidebar.header("3D Visualization")
+point_size = st.sidebar.slider("Point size", 1, 10, 3)
+opacity    = st.sidebar.slider("Opacity", 0.1, 1.0, 0.7, 0.05)
+zoom       = st.sidebar.slider("Zoom", 0.5, 3.0, 1.5, 0.1)
 
 
-# --- Run UMAP (cached per unique parameter combination) ---
-start = time.time()
-
-X_umap = run_umap(
-    X,
-    CFG.n_neighbors,
-    CFG.min_dist,
-    CFG.n_components,
-    CFG.metric,
-    CFG.seed,
-    method,
-    dens_lambda,
-    dens_frac,
-    dens_var_shift,
+# --- 2D selection mode ---
+st.sidebar.header("Region Selection (2D)")
+select_mode = st.sidebar.radio(
+    "Selection Mode",
+    ["pan", "box", "lasso"],
+    index=0,
+    help="Box/lasso: draw on the 2D plot — selected peptides are highlighted on the 3D sphere"
 )
 
-runtime = time.time() - start
+
+
+# RUN UMAP — two separate runs: one 2D (for the flat scatter), one nD (for sphere)
+# Both share the same n_neighbors, min_dist, metric, seed, and method.
+
+st.sidebar.info("Two UMAP runs execute per update: one 2D and one for the sphere dimension selected.")
+
+start_2d = time.time()
+X_umap_2d = run_umap(
+    X, CFG.n_neighbors, CFG.min_dist, 2,
+    CFG.metric, CFG.seed, method,
+    dens_lambda, dens_frac, dens_var_shift,
+)
+runtime_2d = time.time() - start_2d
+
+start_nd = time.time()
+X_umap_nd = run_umap(
+    X, CFG.n_neighbors, CFG.min_dist, sphere_dims,
+    CFG.metric, CFG.seed, method,
+    dens_lambda, dens_frac, dens_var_shift,
+)
+runtime_nd = time.time() - start_nd
 
 
 # --- Baseline metrics ---
 st.subheader("Baseline metrics")
 st.write("Rows:", X.shape[0])
 st.write("Embedding dim:", X.shape[1])
-st.write(f"{method} runtime: {runtime:.3f} seconds")
+mc1, mc2 = st.columns(2)
+mc1.write(f"2D {method} runtime: {runtime_2d:.3f}s")
+mc2.write(f"{sphere_dims}D {method} runtime: {runtime_nd:.3f}s")
 
 
-# --- Plotting ---
+# --- Trustworthiness ---
+st.subheader("Embedding Quality")
+trust_2d = trustworthiness(X, X_umap_2d, n_neighbors=CFG.n_neighbors)
+trust_nd = trustworthiness(X, X_umap_nd, n_neighbors=CFG.n_neighbors)
 
-if CFG.n_components == 2:
-    # Standard 2D scatter plot
-    plot_df = pd.DataFrame({
-        "UMAP1":    X_umap[:, 0],
-        "UMAP2":    X_umap[:, 1],
-        "id":       df["id"],
-        "sequence": df["sequence"],
-        "is_amp":   df["is_amp"],
-    })
+tc1, tc2 = st.columns(2)
+tc1.metric("Trustworthiness 2D", f"{trust_2d:.4f}")
+tc2.metric(f"Trustworthiness {sphere_dims}D", f"{trust_nd:.4f}")
 
-    fig = px.scatter(
-        plot_df,
-        x="UMAP1", y="UMAP2",
-        color="is_amp",
-        color_discrete_map={False: "blue", True: "red"},
-        hover_data=["id", "sequence", "is_amp"],
-        title=f"{method} projection (2D)",
-        render_mode="webgl",
-    )
-    fig.update_traces(marker=dict(size=4, opacity=0.6))
-    st.plotly_chart(fig, use_container_width=True)
+# Show warning/success based on the lower of the two scores
+min_trust = min(trust_2d, trust_nd)
+if min_trust >= 0.90:
+    st.success(f"Both embeddings good — local structure well preserved")
+elif min_trust >= 0.75:
+    st.warning(f"Moderate embedding quality — some structure lost")
+else:
+    st.error(f"Poor embedding quality — significant structure lost")
+
+
+
+# 2D PLOT — always rendered, acts as the selection tool
+st.subheader("2D Projection — Selection Tool")
+st.caption("Use box or lasso mode to select peptides. Your selection is highlighted on the 3D sphere below.")
+
+plot_df = pd.DataFrame({
+    "UMAP1":      X_umap_2d[:, 0],
+    "UMAP2":      X_umap_2d[:, 1],
+    "peptide_id": df["id"],
+    "sequence":   df["sequence"],
+    "is_amp":     df["is_amp"],
+})
+
+fig_2d = px.scatter(
+    plot_df,
+    x="UMAP1", y="UMAP2",
+    color="is_amp",
+    color_discrete_map={False: "blue", True: "red"},
+    hover_data=["peptide_id", "sequence", "is_amp"],
+    title=f"{method} 2D projection",
+)
+fig_2d.update_traces(marker=dict(size=4, opacity=0.6))
+
+drag_map = {"pan": "pan", "box": "select", "lasso": "lasso"}
+fig_2d.update_layout(
+    dragmode=drag_map.get(select_mode, "select"),
+    xaxis=dict(range=[float(X_umap_2d[:, 0].min()) - 1, float(X_umap_2d[:, 0].max()) + 1]),
+    yaxis=dict(range=[float(X_umap_2d[:, 1].min()) - 1, float(X_umap_2d[:, 1].max()) + 1]),
+    height=550,
+)
+
+event_2d = st.plotly_chart(
+    fig_2d,
+    use_container_width=True,
+    on_select="rerun",
+    key="umap_2d_plot",
+)
+
+# Extract selected indices and persist in session_state so the 3D plot
+# can read them even after Streamlit reruns triggered by other widgets
+selected_points_2d = []
+if event_2d and hasattr(event_2d, "selection") and event_2d.selection:
+    selected_points_2d = event_2d.selection.get("points", [])
+
+if selected_points_2d:
+    st.session_state["selected_indices"] = [p["point_index"] for p in selected_points_2d]
+    st.session_state["selected_bbox"] = {
+        "x_min": round(min(p["x"] for p in selected_points_2d), 4),
+        "x_max": round(max(p["x"] for p in selected_points_2d), 4),
+        "y_min": round(min(p["y"] for p in selected_points_2d), 4),
+        "y_max": round(max(p["y"] for p in selected_points_2d), 4),
+    }
+
+# Read persisted selection (survives reruns from dimension switcher etc.)
+selected_indices = st.session_state.get("selected_indices", [])
+selected_bbox    = st.session_state.get("selected_bbox", None)
+
+# Show 2D selection summary
+if selected_indices:
+    selected_df = df.iloc[selected_indices].copy()
+    amp_count     = int(selected_df["is_amp"].sum())
+    non_amp_count = len(selected_df) - amp_count
+
+    st.subheader(f"Selected — {len(selected_indices)} peptides")
+    st.caption(f"AMPs: {amp_count} | Non-AMPs: {non_amp_count}")
+
+    if selected_bbox:
+        st.json(selected_bbox)
+
+    col_save, col_clear = st.columns([1, 1])
+    with col_save:
+        if st.button("Save 2D Selection"):
+            save_path = f"selections/2d_selection_{int(time.time())}.json"
+            os.makedirs("selections", exist_ok=True)
+            with open(save_path, "w") as f_out:
+                json.dump({
+                    "bbox": selected_bbox,
+                    "params": {
+                        "n_neighbors": CFG.n_neighbors,
+                        "min_dist":    CFG.min_dist,
+                        "method":      method,
+                    },
+                    "selected_ids": selected_df["id"].tolist(),
+                }, f_out, indent=2)
+            st.success(f"Saved to {save_path}")
+    with col_clear:
+        if st.button("Clear Selection"):
+            st.session_state.pop("selected_indices", None)
+            st.session_state.pop("selected_bbox", None)
+            st.rerun()
 
 else:
-    # 3D–8D: spherize the UMAP output and visualize on a 3D unit sphere
-    # For 3D: normalizes directly onto sphere
-    # For 4D–8D: normalizes to hypersphere then stereographically projects down to 3D
-    X_sphere = project_embeddings_to_sphere(X_umap)
+    if select_mode in ["box", "lasso"]:
+        st.info("Draw a region on the 2D plot above to highlight peptides on the sphere below.")
 
-    sphere_df = pd.DataFrame({
-        "x":        X_sphere[:, 0],
-        "y":        X_sphere[:, 1],
-        "z":        X_sphere[:, 2],
-        "id":       df["id"],
-        "sequence": df["sequence"],
-        "is_amp":   df["is_amp"],
-    })
 
-    fig = px.scatter_3d(
+
+# 3D SPHERE PLOT — always rendered, highlights whatever is selected in 2D
+st.divider()
+st.subheader(f"3D Sphere — {sphere_dims}D Projection")
+st.caption(
+    f"Showing the {sphere_dims}D UMAP output projected onto a unit sphere. "
+    "Red = selected in 2D plot. Grey = not selected. Blue/Red = AMP coloring when no selection active."
+)
+
+X_sphere = project_embeddings_to_sphere(X_umap_nd)
+
+sphere_df = pd.DataFrame({
+    "x":        X_sphere[:, 0],
+    "y":        X_sphere[:, 1],
+    "z":        X_sphere[:, 2],
+    "id":       df["id"],
+    "sequence": df["sequence"],
+    "is_amp":   df["is_amp"],
+})
+
+if selected_indices:
+    # Mark which points were selected in the 2D plot
+    sphere_df["selected"] = False
+    sphere_df.loc[selected_indices, "selected"] = True
+
+    fig_3d = px.scatter_3d(
+        sphere_df,
+        x="x", y="y", z="z",
+        color="selected",
+        color_discrete_map={
+            True:  "red",
+            False: "rgba(120,120,120,0.15)",
+        },
+        hover_data=["id", "sequence", "is_amp"],
+        title=f"{method} {sphere_dims}D sphere | {len(selected_indices)} peptides selected from 2D",
+    )
+else:
+    # No selection — render with normal AMP/non-AMP coloring
+    fig_3d = px.scatter_3d(
         sphere_df,
         x="x", y="y", z="z",
         color="is_amp",
         color_discrete_map={False: "blue", True: "red"},
-        hover_data=["id", "sequence"],
-        title=f"{method} projection ({CFG.n_components}D — Spherized)",
+        hover_data=["id", "sequence", "is_amp"],
+        title=f"{method} {sphere_dims}D sphere",
     )
 
-    # Apply user-controlled point size and opacity
-    fig.update_traces(marker=dict(size=point_size, opacity=opacity))
+fig_3d.update_traces(marker=dict(size=point_size, opacity=opacity))
+fig_3d.update_layout(
+    height=700,
+    scene=dict(
+        aspectmode="cube",
+        xaxis=dict(showgrid=False, zeroline=False),
+        yaxis=dict(showgrid=False, zeroline=False),
+        zaxis=dict(showgrid=False, zeroline=False),
+    ),
+    scene_camera=dict(eye=dict(x=zoom, y=zoom, z=zoom)),
+)
 
-    # Force equal axes so sphere isn't squished, clean up gridlines,
-    # and apply user-controlled zoom via camera eye distance
-    fig.update_layout(
-        height=700,  # taller plot for easier interaction
-        scene=dict(
-            aspectmode="cube",
-            xaxis=dict(showgrid=False, zeroline=False),
-            yaxis=dict(showgrid=False, zeroline=False),
-            zaxis=dict(showgrid=False, zeroline=False),
-        ),
-        scene_camera=dict(
-            eye=dict(x=zoom, y=zoom, z=zoom)
-        ),
-    )
+st.caption("💡 Tip: Two-finger scroll to zoom, drag to rotate, right-click drag to pan. Use ⛶ in the toolbar to fullscreen.")
+st.plotly_chart(fig_3d, use_container_width=True)
 
-    st.caption("💡 Tip: Two-finger scroll to zoom, drag to rotate, right-click drag to pan. Use ⛶ in the toolbar to fullscreen.")
-    st.plotly_chart(fig, use_container_width=True)
+# Show selected peptides table below the 3D plot if a selection is active
+if selected_indices:
+    st.subheader(f"Selected Peptides on Sphere ({sphere_dims}D)")
+    selected_sphere = sphere_df[sphere_df["selected"] == True][["id", "sequence", "is_amp", "x", "y", "z"]]
+    selected_sphere[["x", "y", "z"]] = selected_sphere[["x", "y", "z"]].round(4)
+    st.dataframe(selected_sphere, use_container_width=True)
+
+    if st.button("Save 3D Sphere Coordinates"):
+        save_path = f"selections/3d_sphere_{sphere_dims}d_{int(time.time())}.json"
+        os.makedirs("selections", exist_ok=True)
+        with open(save_path, "w") as f_out:
+            json.dump({
+                "sphere_dims": sphere_dims,
+                "n_selected":  len(selected_indices),
+                "params": {
+                    "n_neighbors": CFG.n_neighbors,
+                    "min_dist":    CFG.min_dist,
+                    "method":      method,
+                },
+                "selected_ids": df.iloc[selected_indices]["id"].tolist(),
+                "sphere_coords": selected_sphere[["id", "x", "y", "z"]].to_dict(orient="records"),
+            }, f_out, indent=2)
+        st.success(f"Saved to {save_path}")
 
 
 # --- Clear cache ---
