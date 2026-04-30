@@ -1,30 +1,23 @@
 # PepSpace Visualization
 
-PepSpace is an interactive data visualization tool for exploring **bioactive peptide embedding spaces**.
-It allows researchers to visualize peptide datasets using **UMAP** and **densMAP** dimensionality reduction techniques.
-
-The application is built with **Python and Streamlit** and supports both built-in datasets and user-uploaded embeddings.
-
----
+PepSpace is an interactive Streamlit application for exploring bioactive peptide embedding spaces. It visualizes peptide datasets with UMAP and densMAP, supports default Veltri data paths, and allows users to upload custom embedding and metadata files.
 
 ## Features
 
-* Interactive visualization of peptide embedding spaces
-* **UMAP** and **densMAP** projection methods
-* AMP vs Non-AMP color visualization
+* Interactive 2D UMAP and densMAP projections
+* AMP vs non-AMP coloring
+* Hover inspection for peptide IDs, sequences, and labels
 * Upload custom embeddings (`.npy`) and metadata (`.csv`)
-* Hover inspection of peptide sequences and IDs
-* Adjustable UMAP parameters in real time
+* Metadata source switching between processed Veltri metadata and raw Veltri CSV
+* Optional 3D sphere projection
+* Adjustable UMAP and densMAP parameters from the sidebar
+* Cached data loading and projection runs for faster interaction
 
----
+The repository also includes an advanced prototype, `app_test.py`, with additional controls for n-dimensional sphere projection, 2D region selection, trustworthiness metrics, and saving selected peptides.
 
 ## Python Version
 
-This project was developed with:
-
-Python 3.12.10
-
----
+Python 3.12 is recommended. This project was developed with Python 3.12.10.
 
 ## Installation
 
@@ -41,7 +34,7 @@ Create a virtual environment:
 python -m venv .venv
 ```
 
-Activate the environment:
+Activate the environment.
 
 Windows:
 
@@ -55,117 +48,126 @@ Mac/Linux:
 source .venv/bin/activate
 ```
 
-Install the required dependencies:
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
----
-
 ## Running the Application
 
-Start the Streamlit app:
+Start the main Streamlit app:
 
 ```bash
 streamlit run app.py
 ```
 
-After launching, the visualization will automatically open in your browser.
+To run the advanced prototype:
 
----
+```bash
+streamlit run app_test.py
+```
+
+After launching, Streamlit will print a local URL and usually open the application in your browser automatically.
 
 ## Data
 
-This repository includes **precomputed peptide embeddings** so the visualization can run immediately without regenerating embeddings.
+The main app expects precomputed Veltri embeddings and metadata at these paths:
 
-Included dataset:
-
-```
+```text
 embeddings/veltri/veltri_embeddings.npy
 embeddings/veltri/veltri_metadata.csv
 ```
 
-These embeddings were generated using **protein language models** for the Veltri antimicrobial peptide dataset.
+It can also read the raw Veltri CSV from:
 
-Users can also upload their own datasets directly through the interface.
-
-Required formats:
-
-Embeddings:
-
+```text
+data/veltri/all_veltri.csv
 ```
+
+If the default embedding files are not present, restore them before using the default dataset, generate them with the scripts in `scripts/`, or upload custom files through the sidebar.
+
+Custom embeddings must be NumPy arrays:
+
+```text
 .npy
 shape: (samples, embedding_dimension)
 ```
 
-Metadata:
+Custom metadata must be a CSV with the same number of rows as the embedding array. The app auto-detects common column names for peptide sequence, ID, label, and AMP status.
 
+Common metadata columns:
+
+```text
+id, sequence, label, is_amp
 ```
-.csv
-id, sequence, label/is_amp
+
+or:
+
+```text
+peptide_id, sequence, source, AMP
 ```
 
-The number of rows in the metadata must match the number of embeddings.
+## Example Workflow
 
----
-
-## Example Visualization Workflow
-
-1. Load default Veltri dataset
-2. Run **UMAP** or **densMAP** projection
-3. Explore clusters of peptides in embedding space
-4. Inspect peptide sequences using hover information
-
----
+1. Load the default Veltri embeddings, or upload custom embeddings and metadata.
+2. Choose Veltri metadata or the raw Veltri CSV for labels and hover text.
+3. Adjust UMAP or densMAP parameters in the sidebar.
+4. Explore the 2D projection and inspect peptides with hover text.
+5. Optionally enable the 3D sphere projection.
 
 ## Project Structure
 
+```text
+Pepspace-Visualization/
+  app.py                         Main Streamlit visualization app
+  app_test.py                    Advanced/experimental Streamlit app
+  requirements.txt               Python dependencies
+  README.md                      Project documentation
+  LICENSE                        Project license
+
+  data/veltri/                   Raw Veltri dataset
+  embeddings/                    Precomputed embeddings and metadata
+  scripts/                       Data preparation, embedding, and optimization scripts
+  utils/                         Shared utility modules
+  results/                       UMAP optimization result files
 ```
-Pepspace-Visualization
 
-app.py                    Streamlit visualization app
-requirements.txt          Python dependencies
-README.md                 Project documentation
+## Scripts
 
-data/                     Raw datasets
-embeddings/               Precomputed embeddings
-scripts/                  Data preparation and embedding scripts
-notebooks/                Experiment notebooks
-src/                      Utility modules
-vis/                      Visualization helpers
+Useful scripts in this repository:
+
+```text
+scripts/make_veltri_embeddings.py    Generate Veltri embedding files
+scripts/optimize_umap.py             Run UMAP parameter optimization
+scripts/veltri_dataset.py            Prepare Veltri dataset inputs
+scripts/make_fake_csv.py             Create sample fake metadata
+scripts/make_real_csv.py             Create sample real metadata
 ```
-
----
 
 ## Methods
 
-This tool uses the following methods for embedding visualization:
+UMAP is used for nonlinear dimensionality reduction of peptide embedding vectors.
 
-UMAP
-Uniform Manifold Approximation and Projection for dimension reduction.
+densMAP is a density-preserving extension of UMAP that can better maintain relative cluster density.
 
-densMAP
-A density-preserving extension of UMAP for more faithful cluster density representation.
+Protein language model embeddings convert peptide sequences into numerical vectors suitable for projection and visualization.
 
-Protein Language Model Embeddings
-Peptide sequences are converted into numerical vectors using pretrained protein models.
-
----
+The optional sphere projection normalizes higher-dimensional UMAP outputs and projects them into 3D for interactive Plotly visualization.
 
 ## Usage With Custom Datasets
 
-You can upload your own peptide datasets through the sidebar:
+Upload your own peptide dataset from the sidebar:
 
-1. Upload embeddings (`.npy`)
-2. Upload metadata (`.csv`)
-3. Select columns if auto-detection fails
-4. Run UMAP/densMAP visualization
+1. Upload embeddings as a `.npy` file.
+2. Upload metadata as a `.csv` file.
+3. Select sequence, ID, or label columns manually if auto-detection fails.
+4. Run UMAP or densMAP visualization.
 
----
+The metadata row count should match the number of embedding rows. If the counts differ, the app warns you and truncates to the shorter length.
 
 ## Author
 
 Alejandro Lopez and Brian Andrade<br>
 Department of Computer Science<br>
-California State Univeristy - Los Angeles
+California State University - Los Angeles

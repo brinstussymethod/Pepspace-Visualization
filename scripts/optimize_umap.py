@@ -9,7 +9,6 @@ from datetime import datetime
 # Paths
 EMB_PATH = "embeddings/veltri/veltri_embeddings.npy"
 RESULTS_DIR = "optuna_results"
-RESULT_FILE = os.path.join(RESULTS_DIR, "all_umap_results.json")
 
 # Dimension to optimize — change this before each run
 N_COMPONENTS = 5
@@ -67,27 +66,13 @@ print("\nBest trustworthiness score:")
 print(study.best_value)
 
 
-# Build result entry 
-new_entry = {
-    f"{N_COMPONENTS}d": {
+# Write individual per-dimension file (read by app.py as optuna_results/{dim}d_params.json)
+dim_file = os.path.join(RESULTS_DIR, f"{N_COMPONENTS}d_params.json")
+with open(dim_file, "w") as f:
+    json.dump({
         "best_params": study.best_params,
         "best_score":  study.best_value,
         "timestamp":   datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-    }
-}
+    }, f, indent=4)
 
-
-# Load existing results file if it exists, then append
-if os.path.exists(RESULT_FILE):
-    with open(RESULT_FILE, "r") as f:
-        all_results = json.load(f)
-else:
-    all_results = {}
-
-# Overwrite if this dimension was already run
-all_results.update(new_entry)
-
-with open(RESULT_FILE, "w") as f:
-    json.dump(all_results, f, indent=4)
-
-print(f"\nSaved {N_COMPONENTS}D results to: {RESULT_FILE}")
+print(f"\nSaved {N_COMPONENTS}D results to: {dim_file}")

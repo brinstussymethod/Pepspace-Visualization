@@ -8,7 +8,7 @@ url = "https://raw.githubusercontent.com/GIST-CSBL/AMP-BERT/main/all_veltri.csv"
 os.makedirs("data", exist_ok=True)
 
 # Where the file will be saved
-output_path = "data/all_veltri.csv"
+output_path = "data/veltri/all_veltri.csv"
 
 # Download file
 response = requests.get(url)
