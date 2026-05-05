@@ -1,7 +1,0 @@
-{
-    "method": "densMAP 3d",
-    "n_neighbors": 5,
-    "min_dist": 0.01314692069213203,
-    "dens_lambda": 0.11055102960594607
-}
-

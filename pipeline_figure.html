@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Pipeline Figure — UMAP Peptide Embeddings</title>
+<style>
+  body { margin: 20px; background: white; font-family: Arial, Helvetica, sans-serif; }
+</style>
+</head>
+<body>
+<svg width="920" height="1050" xmlns="http://www.w3.org/2000/svg" font-family="Arial, Helvetica, sans-serif" font-size="11">
+<defs>
+  <marker id="arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+    <polygon points="0 0, 8 3, 0 6" fill="#444"/>
+  </marker>
+  <marker id="arr-g" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+    <polygon points="0 0, 8 3, 0 6" fill="#aaa"/>
+  </marker>
+</defs>
+
+<!-- ══════════════════════════════════════════════════════════ PANEL (a) -->
+<text x="8" y="38" font-size="17" font-weight="bold" fill="#111">(a)</text>
+
+<!-- Streamlit app dashed box -->
+<rect x="140" y="18" width="370" height="295" rx="8" fill="none" stroke="#888" stroke-width="1.5" stroke-dasharray="6,4"/>
+<text x="325" y="13" text-anchor="middle" font-size="10" fill="#666">Streamlit app</text>
+
+<!-- ── Left inputs ── -->
+<rect x="8"  y="34"  width="122" height="36" rx="6" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
+<text x="69" y="49"  text-anchor="middle" font-size="10" fill="#92400E" font-weight="bold">ProteoGPT</text>
+<text x="69" y="63"  text-anchor="middle" font-size="10" fill="#92400E">embeddings</text>
+
+<rect x="8"  y="86"  width="122" height="46" rx="6" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
+<text x="69" y="103" text-anchor="middle" font-size="10" fill="#92400E" font-weight="bold">Veltri metadata CSV</text>
+<text x="69" y="117" text-anchor="middle" font-size="10" fill="#92400E">AMP labels inside</text>
+<text x="69" y="130" text-anchor="middle" font-size="9"  fill="#B45309">(single source)</text>
+
+<rect x="8"  y="152" width="122" height="36" rx="6" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5" stroke-dasharray="5,3" fill-opacity="0.65"/>
+<text x="69" y="167" text-anchor="middle" font-size="10" fill="#92400E" font-weight="bold">Optuna JSON</text>
+<text x="69" y="181" text-anchor="middle" font-size="9"  fill="#92400E">(optional)</text>
+
+<!-- arrows: Embeddings → Data Loading, Metadata → Data Loading -->
+<line x1="130" y1="52"  x2="150" y2="65"  stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="130" y1="109" x2="150" y2="99"  stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+
+<!-- Optuna JSON → 2× UMAP: routes up through the gap between inputs and pipeline steps -->
+<polyline points="130,170 140,170 140,120 152,120" fill="none" stroke="#aaa" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr-g)"/>
+
+<!-- ── Pipeline steps ── -->
+<rect x="152" y="30"  width="155" height="46" rx="6" fill="#34D399" stroke="#059669" stroke-width="1.5"/>
+<text x="229" y="49"  text-anchor="middle" font-size="12" fill="white" font-weight="bold">Data Loading</text>
+<text x="229" y="65"  text-anchor="middle" font-size="9"  fill="white">embeddings + metadata</text>
+<line x1="229" y1="76" x2="229" y2="91" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+
+<rect x="152" y="91"  width="155" height="58" rx="6" fill="#34D399" stroke="#059669" stroke-width="1.5"/>
+<text x="229" y="110" text-anchor="middle" font-size="12" fill="white" font-weight="bold">2× UMAP Reduction</text>
+<text x="229" y="126" text-anchor="middle" font-size="9"  fill="white">run_umap(n_comp=2)  → X_2D</text>
+<text x="229" y="140" text-anchor="middle" font-size="9"  fill="white">run_umap(n_comp=nD) → X_nD</text>
+<line x1="229" y1="149" x2="229" y2="164" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+
+<rect x="152" y="164" width="155" height="46" rx="6" fill="#34D399" stroke="#059669" stroke-width="1.5"/>
+<text x="229" y="183" text-anchor="middle" font-size="12" fill="white" font-weight="bold">Sphere Projection</text>
+<text x="229" y="199" text-anchor="middle" font-size="9"  fill="white">L2-normalise X_nD only</text>
+<line x1="229" y1="210" x2="229" y2="225" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+
+<rect x="152" y="225" width="155" height="46" rx="6" fill="#34D399" stroke="#059669" stroke-width="1.5"/>
+<text x="229" y="245" text-anchor="middle" font-size="12" fill="white" font-weight="bold">Render Plots</text>
+<text x="229" y="261" text-anchor="middle" font-size="9"  fill="white">Plotly Express</text>
+
+<!-- Note inside app box (right of pipeline, near 2× UMAP) -->
+<text x="418" y="112" text-anchor="middle" font-size="9" fill="#4B5563" font-style="italic">Optuna params auto-loaded</text>
+<text x="418" y="124" text-anchor="middle" font-size="9" fill="#4B5563" font-style="italic">per dimension via sliders</text>
+
+<!-- app → viz: L-shape routing through empty right portion of app box -->
+<polyline points="307,248 495,248 495,165 530,165" fill="none" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+
+<!-- ── Interactive visualization box ── -->
+<rect x="530" y="18" width="382" height="295" rx="8" fill="none" stroke="#888" stroke-width="1.5" stroke-dasharray="6,4"/>
+<text x="721" y="13" text-anchor="middle" font-size="10" fill="#666">Interactive visualization</text>
+
+<!-- 2D scatter mockup -->
+<text x="636" y="38" text-anchor="middle" font-size="11" fill="#333" font-weight="bold">2D scatter</text>
+<rect x="545" y="44" width="182" height="115" rx="4" fill="#fafafa" stroke="#ccc"/>
+<line x1="558" y1="149" x2="558" y2="55"  stroke="#bbb" stroke-width="1"/>
+<line x1="558" y1="149" x2="718" y2="149" stroke="#bbb" stroke-width="1"/>
+<text x="638" y="161" text-anchor="middle" font-size="8" fill="#888">UMAP-1</text>
+<text x="551" y="100" text-anchor="middle" font-size="8" fill="#888" transform="rotate(-90 551 100)">UMAP-2</text>
+<circle cx="580" cy="100" r="4" fill="#E05252" opacity=".8"/>
+<circle cx="605" cy="80"  r="4" fill="#4CAF50" opacity=".8"/>
+<circle cx="628" cy="115" r="4" fill="#E05252" opacity=".8"/>
+<circle cx="600" cy="130" r="4" fill="#4CAF50" opacity=".8"/>
+<circle cx="652" cy="90"  r="4" fill="#4CAF50" opacity=".8"/>
+<circle cx="670" cy="68"  r="4" fill="#E05252" opacity=".8"/>
+<circle cx="660" cy="118" r="4" fill="#4CAF50" opacity=".8"/>
+<circle cx="570" cy="135" r="4" fill="#E05252" opacity=".8"/>
+<circle cx="695" cy="105" r="4" fill="#4CAF50" opacity=".8"/>
+<circle cx="710" cy="78"  r="4" fill="#E05252" opacity=".8"/>
+
+<!-- 3D sphere mockup -->
+<text x="810" y="38" text-anchor="middle" font-size="11" fill="#333" font-weight="bold">3D sphere</text>
+<circle cx="810" cy="105" r="56" fill="#fafafa" stroke="#ccc" stroke-width="1.5"/>
+<ellipse cx="810" cy="105" rx="56" ry="17" fill="none" stroke="#ddd" stroke-width="1"/>
+<ellipse cx="810" cy="105" rx="17" ry="56" fill="none" stroke="#ddd" stroke-width="1"/>
+<circle cx="778" cy="88"  r="4" fill="#E05252" opacity=".85"/>
+<circle cx="820" cy="70"  r="4" fill="#4CAF50" opacity=".85"/>
+<circle cx="845" cy="103" r="4" fill="#E05252" opacity=".85"/>
+<circle cx="795" cy="130" r="4" fill="#4CAF50" opacity=".85"/>
+<circle cx="838" cy="128" r="4" fill="#4CAF50" opacity=".85"/>
+<circle cx="800" cy="108" r="4" fill="#E05252" opacity=".85"/>
+<circle cx="828" cy="115" r="4" fill="#4CAF50" opacity=".85"/>
+<circle cx="771" cy="118" r="4" fill="#E05252" opacity=".85"/>
+<circle cx="850" cy="83"  r="4" fill="#4CAF50" opacity=".85"/>
+
+<!-- shared params note + slider -->
+<text x="721" y="185" text-anchor="middle" font-size="9" fill="#555">Shared params (auto-loaded per dimension from Optuna JSON):</text>
+<text x="721" y="198" text-anchor="middle" font-size="9" fill="#555">n_neighbors · min_dist · metric · method</text>
+<rect x="548" y="212" width="346" height="18" rx="4" fill="#e4e4e4" stroke="#bbb"/>
+<rect x="548" y="212" width="190" height="18" rx="4" fill="#34D399" opacity=".4"/>
+<circle cx="738" cy="221" r="8" fill="white" stroke="#059669" stroke-width="2"/>
+<text x="540" y="224" text-anchor="end" font-size="9" fill="#777">Slider</text>
+<text x="899" y="224" text-anchor="end" font-size="9" fill="#777">+ num</text>
+
+<!-- legend for panel a -->
+<circle cx="558" cy="256" r="6" fill="#E05252"/><text x="568" y="260" font-size="10" fill="#333">AMP</text>
+<circle cx="618" cy="256" r="6" fill="#4CAF50"/><text x="628" y="260" font-size="10" fill="#333">Non-AMP</text>
+
+
+<!-- ══════════════════════════════════════════════════════════ PANEL (b) -->
+<text x="8" y="352" font-size="17" font-weight="bold" fill="#111">(b)</text>
+<text x="460" y="348" text-anchor="middle" font-size="13" fill="#333" font-weight="bold">Inference detail — run_umap()</text>
+
+<!-- ── Left inputs ── -->
+<ellipse cx="70" cy="392" rx="62" ry="17" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
+<text x="70" y="396" text-anchor="middle" font-size="10" fill="#92400E" font-weight="bold">Embeddings X</text>
+
+<ellipse cx="70" cy="445" rx="62" ry="17" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
+<text x="70" y="441" text-anchor="middle" font-size="10" fill="#92400E" font-weight="bold">UMAP params</text>
+<text x="70" y="454" text-anchor="middle" font-size="9"  fill="#92400E">(from sliders)</text>
+
+<ellipse cx="70" cy="497" rx="62" ry="17" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5" stroke-dasharray="5,3" fill-opacity=".65"/>
+<text x="70" y="493" text-anchor="middle" font-size="10" fill="#92400E" font-weight="bold">Optuna JSON</text>
+<text x="70" y="506" text-anchor="middle" font-size="9"  fill="#92400E">→ auto-fills sliders</text>
+
+<ellipse cx="70" cy="548" rx="62" ry="17" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
+<text x="70" y="544" text-anchor="middle" font-size="10" fill="#92400E" font-weight="bold">Metadata CSV</text>
+<text x="70" y="557" text-anchor="middle" font-size="9"  fill="#92400E">→ is_amp (plot colour)</text>
+
+<!-- ── Two run_umap() inference boxes ── -->
+<rect x="150" y="368" width="150" height="48" rx="6" fill="#A78BFA" stroke="#7C3AED" stroke-width="1.5"/>
+<text x="225" y="387" text-anchor="middle" font-size="10" fill="white" font-weight="bold">run_umap()</text>
+<text x="225" y="401" text-anchor="middle" font-size="9"  fill="white">n_components = 2</text>
+<text x="225" y="412" text-anchor="middle" font-size="9"  fill="white">→ 2D flat projection</text>
+
+<rect x="150" y="428" width="150" height="48" rx="6" fill="#A78BFA" stroke="#7C3AED" stroke-width="1.5"/>
+<text x="225" y="447" text-anchor="middle" font-size="10" fill="white" font-weight="bold">run_umap()</text>
+<text x="225" y="461" text-anchor="middle" font-size="9"  fill="white">n_components = nD</text>
+<text x="225" y="472" text-anchor="middle" font-size="9"  fill="white">→ sphere projection</text>
+
+<!-- arrows: inputs → inference boxes -->
+<!-- Embeddings X → run_umap(2D): horizontal -->
+<line x1="132" y1="387" x2="150" y2="387" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+<!-- Embeddings X → run_umap(nD): fork down through gap at x=141 -->
+<polyline points="132,392 141,392 141,452 150,452" fill="none" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+<!-- UMAP params → run_umap(2D): up and right through same gap -->
+<polyline points="132,440 141,440 141,404 150,404" fill="none" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+<!-- UMAP params → run_umap(nD): horizontal -->
+<line x1="132" y1="450" x2="150" y2="450" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+<!-- Optuna JSON → UMAP params: short dashed upward -->
+<line x1="70" y1="480" x2="70" y2="462" stroke="#aaa" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-g)"/>
+<!-- Metadata CSV: short dashed indicator (is_amp flows into both DataFrames built after UMAP) -->
+<line x1="132" y1="548" x2="160" y2="548" stroke="#aaa" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-g)"/>
+<text x="163" y="545" font-size="8" fill="#999" font-style="italic">feeds plot_df + sphere_df</text>
+
+<!-- ── X_2D, X_nD output boxes ── -->
+<rect x="314" y="375" width="62" height="26" rx="4" fill="#F3F4F6" stroke="#6B7280" stroke-width="1.5"/>
+<text x="345" y="393" text-anchor="middle" font-size="11" fill="#374151" font-weight="bold">X_2D</text>
+
+<rect x="314" y="435" width="62" height="26" rx="4" fill="#F3F4F6" stroke="#6B7280" stroke-width="1.5"/>
+<text x="345" y="453" text-anchor="middle" font-size="11" fill="#374151" font-weight="bold">X_nD</text>
+
+<!-- run_umap → X outputs -->
+<line x1="300" y1="388" x2="314" y2="388" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="300" y1="452" x2="314" y2="452" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+
+<!-- ── Trustworthiness boxes (computed from UMAP output, NOT sphere) ── -->
+<rect x="390" y="368" width="165" height="42" rx="5" fill="#D1FAE5" stroke="#059669" stroke-width="1.5"/>
+<text x="472" y="385" text-anchor="middle" font-size="10" fill="#065F46" font-weight="bold">trustworthiness(X, X_2D)</text>
+<text x="472" y="400" text-anchor="middle" font-size="9"  fill="#065F46">sklearn · before sphere projection</text>
+
+<rect x="390" y="428" width="165" height="42" rx="5" fill="#D1FAE5" stroke="#059669" stroke-width="1.5"/>
+<text x="472" y="445" text-anchor="middle" font-size="10" fill="#065F46" font-weight="bold">trustworthiness(X, X_nD)</text>
+<text x="472" y="460" text-anchor="middle" font-size="9"  fill="#065F46">sklearn · before sphere projection</text>
+
+<!-- X outputs → trustworthiness (horizontal) -->
+<line x1="376" y1="388" x2="390" y2="389" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="376" y1="452" x2="390" y2="449" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+
+<!-- ── Trust score output boxes ── -->
+<rect x="568" y="373" width="88" height="26" rx="4" fill="#6EE7B7" stroke="#059669" stroke-width="1.5"/>
+<text x="612" y="391" text-anchor="middle" font-size="10" fill="#065F46" font-weight="bold">Trust 2D</text>
+
+<rect x="568" y="435" width="88" height="26" rx="4" fill="#6EE7B7" stroke="#059669" stroke-width="1.5"/>
+<text x="612" y="453" text-anchor="middle" font-size="10" fill="#065F46" font-weight="bold">Trust nD</text>
+
+<line x1="555" y1="389" x2="568" y2="386" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="555" y1="449" x2="568" y2="448" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+
+<text x="660" y="389" font-size="9" fill="#555">→ Streamlit metric</text>
+<text x="660" y="451" font-size="9" fill="#555">→ Streamlit metric</text>
+
+<!-- ── 2D lower path: X_2D → plot_df → Plotly → 2D Viz ── -->
+<!-- X_2D straight down to plot_df -->
+<polyline points="345,401 345,500" fill="none" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+
+<rect x="314" y="500" width="62" height="26" rx="4" fill="#F3F4F6" stroke="#6B7280" stroke-width="1.5"/>
+<text x="345" y="518" text-anchor="middle" font-size="10" fill="#374151">plot_df</text>
+
+<line x1="376" y1="513" x2="393" y2="513" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+
+<rect x="393" y="500" width="100" height="26" rx="5" fill="#A78BFA" stroke="#7C3AED" stroke-width="1.5"/>
+<text x="443" y="518" text-anchor="middle" font-size="10" fill="white" font-weight="bold">Plotly render</text>
+
+<line x1="493" y1="513" x2="510" y2="513" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+
+<rect x="510" y="500" width="118" height="26" rx="5" fill="#34D399" stroke="#059669" stroke-width="1.5"/>
+<text x="569" y="518" text-anchor="middle" font-size="10" fill="white" font-weight="bold">2D Visualization</text>
+
+<!-- ── nD lower path: X_nD → project_to_sphere → sphere_df → 3D Viz ── -->
+<!-- X_nD routes left of plot_df column to avoid overlap, then down to project_to_sphere -->
+<polyline points="345,461 302,461 302,558 314,558" fill="none" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+
+<rect x="314" y="545" width="148" height="26" rx="5" fill="#A78BFA" stroke="#7C3AED" stroke-width="1.5"/>
+<text x="388" y="563" text-anchor="middle" font-size="10" fill="white" font-weight="bold">project_to_sphere()</text>
+
+<line x1="462" y1="558" x2="480" y2="558" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+
+<!-- sphere_df and 3D Viz aligned at the same y -->
+<rect x="480" y="545" width="72" height="26" rx="4" fill="#F3F4F6" stroke="#6B7280" stroke-width="1.5"/>
+<text x="516" y="563" text-anchor="middle" font-size="10" fill="#374151">sphere_df</text>
+
+<line x1="552" y1="558" x2="570" y2="558" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+
+<rect x="570" y="545" width="118" height="26" rx="5" fill="#34D399" stroke="#059669" stroke-width="1.5"/>
+<text x="629" y="563" text-anchor="middle" font-size="10" fill="white" font-weight="bold">3D Visualization</text>
+
+<!-- ── Session state row ── -->
+<text x="10" y="616" font-size="9" fill="#666" font-style="italic">Selection persistence:</text>
+
+<rect x="150" y="624" width="120" height="28" rx="5" fill="#FEE2E2" stroke="#EF4444" stroke-width="1.5"/>
+<text x="210" y="642" text-anchor="middle" font-size="10" fill="#991B1B">2D plot event</text>
+
+<line x1="270" y1="638" x2="290" y2="638" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+
+<rect x="290" y="624" width="160" height="28" rx="5" fill="#FCA5A5" stroke="#EF4444" stroke-width="1.5"/>
+<text x="370" y="636" text-anchor="middle" font-size="10" fill="#991B1B" font-weight="bold">session_state</text>
+<text x="370" y="648" text-anchor="middle" font-size="9"  fill="#7F1D1D">selected_indices + bbox</text>
+
+<line x1="450" y1="638" x2="470" y2="638" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+
+<rect x="470" y="624" width="218" height="28" rx="5" fill="#FEE2E2" stroke="#EF4444" stroke-width="1.5"/>
+<text x="579" y="636" text-anchor="middle" font-size="10" fill="#991B1B">highlight on 3D sphere</text>
+<text x="579" y="648" text-anchor="middle" font-size="9"  fill="#991B1B">persists across Streamlit reruns</text>
+
+
+<!-- ══════════════════════════════════════════════════════════ PANEL (c) -->
+<text x="8"   y="700" font-size="17" font-weight="bold" fill="#111">(c)</text>
+<text x="460" y="696" text-anchor="middle" font-size="13" fill="#333" font-weight="bold">Pipeline outputs</text>
+
+<!-- 2D scatter output -->
+<rect x="18"  y="710" width="248" height="215" rx="8" fill="#fafafa" stroke="#ccc" stroke-width="1.5"/>
+<text x="142" y="730" text-anchor="middle" font-size="11" fill="#333" font-weight="bold">2D UMAP scatter</text>
+<line x1="40"  y1="905" x2="40"  y2="742" stroke="#bbb" stroke-width="1"/>
+<line x1="40"  y1="905" x2="250" y2="905" stroke="#bbb" stroke-width="1"/>
+<text x="145" y="916" text-anchor="middle" font-size="8" fill="#888">UMAP-1</text>
+<text x="33"  y="828" text-anchor="middle" font-size="8" fill="#888" transform="rotate(-90 33 828)">UMAP-2</text>
+<circle cx="75"  cy="850" r="5" fill="#E05252" opacity=".8"/>
+<circle cx="108" cy="820" r="5" fill="#4CAF50" opacity=".8"/>
+<circle cx="142" cy="865" r="5" fill="#E05252" opacity=".8"/>
+<circle cx="128" cy="888" r="5" fill="#4CAF50" opacity=".8"/>
+<circle cx="178" cy="838" r="5" fill="#4CAF50" opacity=".8"/>
+<circle cx="205" cy="808" r="5" fill="#E05252" opacity=".8"/>
+<circle cx="196" cy="875" r="5" fill="#4CAF50" opacity=".8"/>
+<circle cx="65"  cy="893" r="5" fill="#E05252" opacity=".8"/>
+<circle cx="168" cy="782" r="5" fill="#4CAF50" opacity=".8"/>
+<circle cx="220" cy="858" r="5" fill="#E05252" opacity=".8"/>
+<circle cx="93"  cy="872" r="5" fill="#4CAF50" opacity=".8"/>
+<circle cx="153" cy="825" r="5" fill="#E05252" opacity=".8"/>
+
+<!-- 3D sphere output -->
+<rect x="290" y="710" width="270" height="215" rx="8" fill="#fafafa" stroke="#ccc" stroke-width="1.5"/>
+<text x="425" y="730" text-anchor="middle" font-size="11" fill="#333" font-weight="bold">3D unit sphere</text>
+<circle cx="425" cy="833" r="68" fill="#fafafa" stroke="#ccc" stroke-width="1.5"/>
+<ellipse cx="425" cy="833" rx="68" ry="21" fill="none" stroke="#ddd" stroke-width="1"/>
+<ellipse cx="425" cy="833" rx="21" ry="68" fill="none" stroke="#ddd" stroke-width="1"/>
+<circle cx="392" cy="812" r="4.5" fill="rgba(120,120,120,.3)"/>
+<circle cx="438" cy="792" r="4.5" fill="rgba(120,120,120,.3)"/>
+<circle cx="456" cy="825" r="4.5" fill="rgba(120,120,120,.3)"/>
+<circle cx="410" cy="858" r="4.5" fill="rgba(120,120,120,.3)"/>
+<circle cx="442" cy="855" r="4.5" fill="rgba(120,120,120,.3)"/>
+<circle cx="400" cy="838" r="5" fill="#E05252" opacity=".9"/>
+<circle cx="450" cy="848" r="5" fill="#E05252" opacity=".9"/>
+<circle cx="376" cy="848" r="5" fill="#E05252" opacity=".9"/>
+<text x="425" y="920" text-anchor="middle" font-size="9" fill="#888">red = selected via 2D plot (session_state)</text>
+
+<!-- Trustworthiness output (2 scores only) -->
+<rect x="590" y="710" width="312" height="215" rx="8" fill="#fafafa" stroke="#ccc" stroke-width="1.5"/>
+<text x="746" y="730" text-anchor="middle" font-size="11" fill="#333" font-weight="bold">Trustworthiness score</text>
+<text x="746" y="745" text-anchor="middle" font-size="9"  fill="#888">2 scores displayed at a time (2D + current nD)</text>
+
+<text x="610" y="782" font-size="10" fill="#374151" font-weight="bold">2D</text>
+<rect x="638" y="768" width="232" height="20" rx="3" fill="#e5e7eb"/>
+<rect x="638" y="768" width="185" height="20" rx="3" fill="#34D399"/>
+<text x="877" y="783" text-anchor="end" font-size="10" fill="#374151">0.84</text>
+
+<text x="610" y="820" font-size="10" fill="#374151" font-weight="bold">6D</text>
+<text x="610" y="832" font-size="8"  fill="#888">(selected)</text>
+<rect x="638" y="806" width="232" height="20" rx="3" fill="#e5e7eb"/>
+<rect x="638" y="806" width="213" height="20" rx="3" fill="#34D399"/>
+<text x="877" y="821" text-anchor="end" font-size="10" fill="#374151">0.94</text>
+
+<text x="746" y="864" text-anchor="middle" font-size="9" fill="#888">Only 2 scores shown at a time.</text>
+<text x="746" y="877" text-anchor="middle" font-size="9" fill="#888">Change sphere dimension to compare other nD values.</text>
+
+
+<!-- ══════════════════════════════════════════════════════════ LEGEND -->
+<line x1="18" y1="952" x2="906" y2="952" stroke="#e5e7eb" stroke-width="1"/>
+
+<rect x="18"  y="962" width="12" height="12" rx="2" fill="#34D399" stroke="#059669"/>
+<text x="34"  y="973" font-size="10" fill="#333">pipeline step</text>
+
+<rect x="130" y="962" width="12" height="12" rx="2" fill="#A78BFA" stroke="#7C3AED"/>
+<text x="146" y="973" font-size="10" fill="#333">inference / render</text>
+
+<rect x="262" y="962" width="12" height="12" rx="2" fill="#FEF3C7" stroke="#D97706"/>
+<text x="278" y="973" font-size="10" fill="#333">param / config</text>
+
+<rect x="370" y="962" width="12" height="12" rx="2" fill="#6EE7B7" stroke="#059669"/>
+<text x="386" y="973" font-size="10" fill="#333">embedding output</text>
+
+<rect x="490" y="962" width="12" height="12" rx="2" fill="#FCA5A5" stroke="#EF4444"/>
+<text x="506" y="973" font-size="10" fill="#333">session state</text>
+
+<rect x="590" y="962" width="12" height="12" rx="2" fill="#FEF3C7" stroke="#D97706" stroke-dasharray="3,2"/>
+<text x="606" y="973" font-size="10" fill="#333">optional</text>
+
+<line x1="668" y1="968" x2="698" y2="968" stroke="#aaa" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-g)"/>
+<text x="704" y="973" font-size="10" fill="#333">optional flow</text>
+
+<!-- Caption -->
+<text x="460" y="1005" text-anchor="middle" font-size="10" fill="#555">
+  Fig. 1. UMAP peptide embedding pipeline for AMP classification using ProteoGPT + Veltri dataset.
+</text>
+<text x="460" y="1020" text-anchor="middle" font-size="9" fill="#888">
+  Corrections vs. original: two separate run_umap() calls; trustworthiness computed from UMAP output not sphere; session_state stores 2D selection indices only; 2 trust scores shown at a time.
+</text>
+
+</svg>
+</body>
+</html>

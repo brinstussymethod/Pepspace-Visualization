@@ -1,0 +1,10 @@
+{
+    "best_params": {
+        "method": "densMAP 3d",
+        "n_neighbors": 5,
+        "min_dist": 0.0018245083232441683,
+        "dens_lambda": 0.11649285454082424
+    },
+    "best_score": 0.8935282223036664,
+    "timestamp": "2026-04-30 23:09:35"
+}

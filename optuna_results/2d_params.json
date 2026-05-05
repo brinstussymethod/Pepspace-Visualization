@@ -1,0 +1,9 @@
+{
+    "best_params": {
+        "method": "UMAP 2d",
+        "n_neighbors": 5,
+        "min_dist": 0.003875516776081243
+    },
+    "best_score": 0.8540068043213876,
+    "timestamp": "2026-04-30 17:12:40"
+}

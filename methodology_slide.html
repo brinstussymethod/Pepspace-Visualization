@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Methodology / Approach — UMAP Peptide Embeddings</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: Georgia, 'Times New Roman', serif;
+    background: #f5f5f5;
+    display: flex;
+    justify-content: center;
+    padding: 30px;
+  }
+  .slide {
+    background: white;
+    width: 720px;
+    border: 1px solid #ccc;
+    box-shadow: 3px 3px 12px rgba(0,0,0,0.2);
+  }
+  .slide-header {
+    background: #6a0dad;
+    color: white;
+    text-align: center;
+    padding: 14px 0;
+    font-size: 22px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+  }
+  .slide-body { padding: 20px 24px; }
+
+  .fig1-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+  .fig1-caption {
+    width: 150px;
+    flex-shrink: 0;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .fig1-caption b { font-size: 14px; }
+
+  .text-block {
+    font-size: 13px;
+    line-height: 1.65;
+    margin-bottom: 18px;
+    text-align: justify;
+  }
+  .text-block ul { margin: 6px 0 6px 22px; }
+  .text-block li { margin-bottom: 3px; }
+
+  .fig2-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .fig2-caption {
+    width: 130px;
+    flex-shrink: 0;
+    font-size: 13px;
+    line-height: 1.5;
+    text-align: right;
+    padding-top: 8px;
+  }
+  .fig2-caption b { font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="slide">
+  <div class="slide-header">Methodology / Approach</div>
+  <div class="slide-body">
+
+    <!-- FIG 1 -->
+    <div class="fig1-row">
+      <div class="fig1-caption">
+        <b>Fig 1:</b> High Level<br>Overview of the<br>UMAP Peptide<br>Embedding Pipeline
+      </div>
+
+      <svg width="520" height="190" xmlns="http://www.w3.org/2000/svg" font-family="Arial, sans-serif" font-size="11">
+        <defs>
+          <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#555"/>
+          </marker>
+        </defs>
+
+        <!-- Left column label -->
+        <rect x="10" y="2" width="110" height="22" rx="4" fill="#e8e8e8" stroke="#999"/>
+        <text x="65" y="17" text-anchor="middle" font-size="11" fill="#333">Streamlit App</text>
+
+        <!-- Box 1 -->
+        <rect x="10" y="34" width="110" height="32" rx="4" fill="#4caf50" stroke="#2e7d32"/>
+        <text x="65" y="47" text-anchor="middle" fill="white" font-weight="bold">Data Loading</text>
+        <text x="65" y="60" text-anchor="middle" fill="white" font-size="9">(Embeddings + Metadata)</text>
+        <line x1="65" y1="66" x2="65" y2="82" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+
+        <!-- Box 2 -->
+        <rect x="10" y="82" width="110" height="32" rx="4" fill="#4caf50" stroke="#2e7d32"/>
+        <text x="65" y="95" text-anchor="middle" fill="white" font-weight="bold">UMAP Reduction</text>
+        <text x="65" y="108" text-anchor="middle" fill="white" font-size="9">(2D &amp; nD, shared params)</text>
+        <line x1="65" y1="114" x2="65" y2="130" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+
+        <!-- Box 3 -->
+        <rect x="10" y="130" width="110" height="32" rx="4" fill="#4caf50" stroke="#2e7d32"/>
+        <text x="65" y="143" text-anchor="middle" fill="white" font-weight="bold">Sphere Projection</text>
+        <text x="65" y="156" text-anchor="middle" fill="white" font-size="9">(L2-normalize nD output)</text>
+
+        <!-- Bracket + label -->
+        <text x="136" y="116" font-size="10" fill="#555" font-style="italic">Render</text>
+        <text x="136" y="128" font-size="10" fill="#555" font-style="italic">Plots</text>
+        <line x1="130" y1="50" x2="150" y2="50" stroke="#999" stroke-width="1"/>
+        <line x1="130" y1="162" x2="150" y2="162" stroke="#999" stroke-width="1"/>
+        <line x1="150" y1="50" x2="150" y2="162" stroke="#999" stroke-width="1"/>
+        <line x1="150" y1="106" x2="165" y2="106" stroke="#999" stroke-width="1" marker-end="url(#arr)"/>
+
+        <!-- Right column label -->
+        <rect x="320" y="2" width="190" height="22" rx="4" fill="#e8e8e8" stroke="#999"/>
+        <text x="415" y="17" text-anchor="middle" font-size="11" fill="#333">Interactive Visualization</text>
+
+        <!-- AMP/non-AMP grid -->
+        <rect x="322" y="34" width="26" height="22" rx="2" fill="#ef9a9a" stroke="#c62828"/>
+        <text x="335" y="50" text-anchor="middle" fill="#7f0000" font-size="8">AMP</text>
+        <rect x="352" y="34" width="26" height="22" rx="2" fill="#a5d6a7" stroke="#2e7d32"/>
+        <text x="365" y="50" text-anchor="middle" fill="#1b5e20" font-size="8">non</text>
+        <rect x="382" y="34" width="26" height="22" rx="2" fill="#ef9a9a" stroke="#c62828"/>
+        <text x="395" y="50" text-anchor="middle" fill="#7f0000" font-size="8">AMP</text>
+        <rect x="412" y="34" width="26" height="22" rx="2" fill="#a5d6a7" stroke="#2e7d32"/>
+        <text x="425" y="50" text-anchor="middle" fill="#1b5e20" font-size="8">non</text>
+        <rect x="442" y="34" width="26" height="22" rx="2" fill="#ef9a9a" stroke="#c62828"/>
+        <text x="455" y="50" text-anchor="middle" fill="#7f0000" font-size="8">AMP</text>
+        <rect x="472" y="34" width="26" height="22" rx="2" fill="#a5d6a7" stroke="#2e7d32"/>
+        <text x="485" y="50" text-anchor="middle" fill="#1b5e20" font-size="8">non</text>
+
+        <rect x="322" y="60" width="26" height="22" rx="2" fill="#a5d6a7" stroke="#2e7d32"/>
+        <rect x="352" y="60" width="26" height="22" rx="2" fill="#ef9a9a" stroke="#c62828"/>
+        <rect x="382" y="60" width="26" height="22" rx="2" fill="#a5d6a7" stroke="#2e7d32"/>
+        <rect x="412" y="60" width="26" height="22" rx="2" fill="#ef9a9a" stroke="#c62828"/>
+        <rect x="442" y="60" width="26" height="22" rx="2" fill="#a5d6a7" stroke="#2e7d32"/>
+        <rect x="472" y="60" width="26" height="22" rx="2" fill="#ef9a9a" stroke="#c62828"/>
+
+        <rect x="322" y="86" width="26" height="22" rx="2" fill="#ef9a9a" stroke="#c62828"/>
+        <rect x="352" y="86" width="26" height="22" rx="2" fill="#ef9a9a" stroke="#c62828"/>
+        <rect x="382" y="86" width="26" height="22" rx="2" fill="#a5d6a7" stroke="#2e7d32"/>
+        <rect x="412" y="86" width="26" height="22" rx="2" fill="#a5d6a7" stroke="#2e7d32"/>
+        <rect x="442" y="86" width="26" height="22" rx="2" fill="#ef9a9a" stroke="#c62828"/>
+        <rect x="472" y="86" width="26" height="22" rx="2" fill="#a5d6a7" stroke="#2e7d32"/>
+
+        <rect x="322" y="112" width="26" height="22" rx="2" fill="#a5d6a7" stroke="#2e7d32"/>
+        <rect x="352" y="112" width="26" height="22" rx="2" fill="#a5d6a7" stroke="#2e7d32"/>
+        <rect x="382" y="112" width="26" height="22" rx="2" fill="#ef9a9a" stroke="#c62828"/>
+        <rect x="412" y="112" width="26" height="22" rx="2" fill="#a5d6a7" stroke="#2e7d32"/>
+        <rect x="442" y="112" width="26" height="22" rx="2" fill="#a5d6a7" stroke="#2e7d32"/>
+        <rect x="472" y="112" width="26" height="22" rx="2" fill="#ef9a9a" stroke="#c62828"/>
+
+        <rect x="322" y="138" width="26" height="22" rx="2" fill="#ef9a9a" stroke="#c62828"/>
+        <rect x="352" y="138" width="26" height="22" rx="2" fill="#a5d6a7" stroke="#2e7d32"/>
+        <rect x="382" y="138" width="26" height="22" rx="2" fill="#a5d6a7" stroke="#2e7d32"/>
+        <rect x="412" y="138" width="26" height="22" rx="2" fill="#ef9a9a" stroke="#c62828"/>
+        <rect x="442" y="138" width="26" height="22" rx="2" fill="#a5d6a7" stroke="#2e7d32"/>
+        <rect x="472" y="138" width="26" height="22" rx="2" fill="#a5d6a7" stroke="#2e7d32"/>
+
+        <!-- Legend -->
+        <rect x="322" y="166" width="10" height="10" fill="#ef9a9a" stroke="#c62828"/>
+        <text x="336" y="175" font-size="9" fill="#555">AMP</text>
+        <rect x="365" y="166" width="10" height="10" fill="#a5d6a7" stroke="#2e7d32"/>
+        <text x="379" y="175" font-size="9" fill="#555">Non-AMP</text>
+
+        <!-- Arrow pipeline → visualization -->
+        <line x1="165" y1="106" x2="318" y2="106" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+      </svg>
+    </div>
+
+    <!-- MAIN TEXT -->
+    <div class="text-block">
+      This pipeline enables exploration of structural patterns in peptide embeddings and
+      comparison of antimicrobial vs non-antimicrobial sequences.
+      The app visualises pre-computed <b>ProteoGPT</b> peptide embeddings using two linked projections:
+      a flat 2D UMAP scatter and a 3D unit-sphere visualization derived from normalized
+      n-dimensional UMAP embeddings.
+      Optuna-optimized hyperparameters are stored and loaded per target dimensionality (2D–8D).
+      The following challenges were addressed during development:
+      <ul>
+        <li><b>Trustworthiness scores</b> were sensitive to hyperparameter choices (e.g., <i>n_neighbors</i>, <i>min_dist</i>), requiring per-dimension validation</li>
+        <li>n-dimensional UMAP output required explicit <b>L2 normalization</b> before sphere projection to avoid geometric distortion</li>
+        <li>Streamlit reruns reset plot state — 2D selections are <b>persisted via session_state</b> so the 3D sphere stays in sync</li>
+      </ul>
+      To address the parameter-consistency issue, we switched from manually-tuned values to
+      JSON files produced by Optuna, one per target dimensionality, so each run uses
+      <b>validated hyperparameters</b> rather than arbitrary defaults.
+      The two UMAP runs (2D flat + nD sphere) share <i>n_neighbors</i>, <i>min_dist</i>,
+      <i>metric</i>, and <i>method</i>, ensuring the linked views are directly comparable.
+    </div>
+
+    <!-- FIG 2 -->
+    <div class="fig2-row">
+
+      <!--
+        Layout plan (all coordinates verified non-overlapping):
+
+        LEFT COLUMN (cx=55):
+          Optuna JSON      cy=26   (ellipse, ry=13 → bottom y=39)
+          [brace label]    y=68–98 at x=98
+          UMAP Params      cy=120  (ellipse, ry=13)
+          Embeddings X     cy=155  (ellipse, ry=13)
+          Metadata CSV     y=180–202 (rect)
+          label/is_amp     cy=240  (ellipse, ry=13)
+
+        INFERENCE:   x=106 y=66 w=84 h=34  (cx=148 cy=83)
+        X_2D:        x=210 y=66 w=58 h=24  (cx=239 cy=78)
+        X_nD:        x=210 y=103 w=58 h=24 (cx=239 cy=115)
+        plot_df:     x=287 y=66 w=62 h=24  (cx=318 cy=78)
+
+        project_to_sphere: x=190 y=144 w=148 h=36 (cx=264 cy=162)
+        sphere_df:   x=202 y=192 w=90 h=26 (cx=247 cy=205)
+
+        Plotly Render:  x=374 y=132 w=106 h=28 (cx=427 cy=146)
+        Visualisation:  x=374 y=176 w=106 h=28 (cx=427 cy=190)
+
+        session_state:       cx=247 cy=240
+        Trustworthiness:     cx=427 cy=240
+
+        ARROWS (orthogonal routing):
+          Optuna → INFERENCE:  L-shape (55,39)→(148,39)→(148,66)
+          Brace → INFERENCE:   (98,83)→(106,83)
+          UMAP Params → INFERENCE bottom-left:  diagonal (99,120)→(138,100)
+          Embeddings X → INFERENCE bottom-right: diagonal (99,155)→(156,100)
+          INFERENCE → X_2D:    (190,78)→(210,78)
+          INFERENCE → X_nD:    (148,100)→(148,115)→(210,115)
+          X_2D → plot_df:      (268,78)→(287,78)
+          plot_df → Plotly:    (349,78)→(430,78)→(430,132)
+          X_nD → project:      (239,127)→(239,144)
+          project → sphere_df: (264,180)→(264,190)→(247,190)→(247,192)
+          sphere_df → Visual:  (292,205)→(370,205)→(370,190)→(374,190)
+          sphere_df → session: (247,218)→(247,227)
+          Plotly → Visual:     (427,160)→(427,176)
+          Visual → Trust:      (427,204)→(427,227)
+          session → Trust:     (293,240)→(367,240)
+          Metadata → sphere_df (dashed): (94,191)→(202,205)
+          label/is_amp → session (dashed): (97,240)→(201,240)
+      -->
+      <svg width="568" height="265" xmlns="http://www.w3.org/2000/svg"
+           font-family="Arial, sans-serif" font-size="10">
+        <defs>
+          <marker id="a2" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L7,3 z" fill="#555"/>
+          </marker>
+          <marker id="a2d" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L7,3 z" fill="#aaa"/>
+          </marker>
+        </defs>
+
+        <!-- Outer boundary -->
+        <rect x="2" y="2" width="564" height="261" rx="6"
+              fill="none" stroke="#bbb" stroke-dasharray="5,3" stroke-width="1.2"/>
+
+        <!-- ═══ LEFT INPUTS ═══ -->
+
+        <!-- Optuna JSON -->
+        <ellipse cx="55" cy="26" rx="46" ry="13"
+                 fill="#f3e5f5" stroke="#7b1fa2" stroke-width="1.2"/>
+        <text x="55" y="30" text-anchor="middle" fill="#4a148c" font-size="9.5">Optuna JSON</text>
+
+        <!-- Optuna → INFERENCE: L-shape up-right-down, clears brace zone -->
+        <polyline points="55,39 55,50 148,50 148,66"
+                  fill="none" stroke="#555" stroke-width="1.2" marker-end="url(#a2)"/>
+
+        <!-- Brace for "Embeddings & Metadata" data inputs -->
+        <line x1="94" y1="68" x2="94" y2="98" stroke="#aaa" stroke-width="1"/>
+        <line x1="90" y1="68" x2="94" y2="68" stroke="#aaa" stroke-width="1"/>
+        <line x1="90" y1="98" x2="94" y2="98" stroke="#aaa" stroke-width="1"/>
+        <line x1="94" y1="83" x2="106" y2="83" stroke="#aaa" stroke-width="1" marker-end="url(#a2d)"/>
+        <text x="4" y="77" fill="#777" font-size="8.5" font-style="italic">Embeddings</text>
+        <text x="4" y="88" fill="#777" font-size="8.5" font-style="italic">&amp; Metadata</text>
+
+        <!-- UMAP Params -->
+        <ellipse cx="55" cy="120" rx="44" ry="13"
+                 fill="#f3e5f5" stroke="#7b1fa2" stroke-width="1.2"/>
+        <text x="55" y="124" text-anchor="middle" fill="#4a148c" font-size="9">UMAP Params</text>
+        <!-- dashed diagonal to INFERENCE bottom (y=100), left of center (x=138) -->
+        <line x1="99" y1="120" x2="138" y2="100"
+              stroke="#bbb" stroke-width="1" stroke-dasharray="4,2" marker-end="url(#a2d)"/>
+
+        <!-- Embeddings X -->
+        <ellipse cx="55" cy="155" rx="44" ry="13"
+                 fill="#fce4ec" stroke="#c62828" stroke-width="1.2"/>
+        <text x="55" y="159" text-anchor="middle" fill="#7f0000" font-size="9">Embeddings X</text>
+        <!-- dashed diagonal to INFERENCE bottom (y=100), right of center (x=156) -->
+        <line x1="99" y1="155" x2="156" y2="100"
+              stroke="#bbb" stroke-width="1" stroke-dasharray="4,2" marker-end="url(#a2d)"/>
+
+        <!-- Metadata CSV -->
+        <rect x="12" y="180" width="82" height="22" rx="3"
+              fill="#e8eaf6" stroke="#3949ab" stroke-width="1.2"/>
+        <text x="53" y="195" text-anchor="middle" fill="#1a237e" font-size="9">Metadata CSV</text>
+        <!-- dashed to sphere_df left edge (x=202, cy=205) -->
+        <line x1="94" y1="191" x2="202" y2="205"
+              stroke="#bbb" stroke-width="1" stroke-dasharray="4,2" marker-end="url(#a2d)"/>
+
+        <!-- label / is_amp -->
+        <ellipse cx="55" cy="240" rx="42" ry="13"
+                 fill="#fff9c4" stroke="#f9a825" stroke-width="1.2"/>
+        <text x="55" y="244" text-anchor="middle" fill="#5d4037" font-size="9">label / is_amp</text>
+        <!-- dashed to session_state left edge (cx-rx=201, cy=240) -->
+        <line x1="97" y1="240" x2="201" y2="240"
+              stroke="#bbb" stroke-width="1" stroke-dasharray="4,2" marker-end="url(#a2d)"/>
+
+        <!-- ═══ INFERENCE BOX ═══ -->
+        <!-- x=106 y=66 w=84 h=34 → right=190 bottom=100 cx=148 cy=83 -->
+        <rect x="106" y="66" width="84" height="34" rx="4"
+              fill="#2e7d32" stroke="#1b5e20" stroke-width="1.5"/>
+        <text x="148" y="80" text-anchor="middle" fill="white"
+              font-weight="bold" font-size="11">INFERENCE</text>
+        <text x="148" y="93" text-anchor="middle" fill="#c8e6c9"
+              font-size="8.5">run_umap( )</text>
+
+        <!-- INFERENCE → X_2D (right at y=78) -->
+        <line x1="190" y1="78" x2="210" y2="78"
+              stroke="#555" stroke-width="1.2" marker-end="url(#a2)"/>
+
+        <!-- INFERENCE → X_nD (down then right) -->
+        <polyline points="148,100 148,115 210,115"
+                  fill="none" stroke="#555" stroke-width="1.2" marker-end="url(#a2)"/>
+
+        <!-- ═══ 2D PATH ═══ -->
+
+        <!-- X_2D: x=210 y=66 w=58 h=24 cx=239 cy=78 -->
+        <rect x="210" y="66" width="58" height="24" rx="3"
+              fill="#fff9c4" stroke="#f9a825" stroke-width="1.2"/>
+        <text x="239" y="82" text-anchor="middle" fill="#333">X_2D</text>
+
+        <!-- X_2D → plot_df -->
+        <line x1="268" y1="78" x2="287" y2="78"
+              stroke="#555" stroke-width="1.2" marker-end="url(#a2)"/>
+
+        <!-- plot_df: x=287 y=66 w=62 h=24 cx=318 cy=78 -->
+        <rect x="287" y="66" width="62" height="24" rx="3"
+              fill="#fff9c4" stroke="#f9a825" stroke-width="1.2"/>
+        <text x="318" y="82" text-anchor="middle" fill="#333">plot_df</text>
+
+        <!-- plot_df → Plotly Render: right to x=427 then down -->
+        <polyline points="349,78 427,78 427,132"
+                  fill="none" stroke="#555" stroke-width="1.2" marker-end="url(#a2)"/>
+
+        <!-- ═══ nD PATH ═══ -->
+
+        <!-- X_nD: x=210 y=103 w=58 h=24 cx=239 cy=115 -->
+        <rect x="210" y="103" width="58" height="24" rx="3"
+              fill="#f8bbd0" stroke="#c62828" stroke-width="1.2"/>
+        <text x="239" y="119" text-anchor="middle" fill="#333">X_nD</text>
+
+        <!-- X_nD → project_to_sphere (straight down) -->
+        <line x1="239" y1="127" x2="239" y2="144"
+              stroke="#555" stroke-width="1.2" marker-end="url(#a2)"/>
+
+        <!-- project_to_sphere: x=190 y=144 w=148 h=36 cx=264 cy=162 -->
+        <rect x="190" y="144" width="148" height="36" rx="3"
+              fill="#e3f2fd" stroke="#1565c0" stroke-width="1.2"/>
+        <text x="264" y="159" text-anchor="middle" fill="#0d47a1"
+              font-weight="bold" font-size="10">project_to_sphere( )</text>
+        <text x="264" y="173" text-anchor="middle" fill="#1565c0"
+              font-size="8" font-style="italic">L2-normalize nD → unit sphere</text>
+
+        <!-- project_to_sphere → sphere_df (down then left corner) -->
+        <polyline points="264,180 264,190 247,190 247,192"
+                  fill="none" stroke="#555" stroke-width="1.2" marker-end="url(#a2)"/>
+
+        <!-- sphere_df: x=202 y=192 w=90 h=26 cx=247 cy=205 -->
+        <rect x="202" y="192" width="90" height="26" rx="3"
+              fill="#e8f5e9" stroke="#388e3c" stroke-width="1.2"/>
+        <text x="247" y="209" text-anchor="middle" fill="#1b5e20">sphere_df</text>
+
+        <!-- sphere_df → Visualisation (right, up, into left edge) -->
+        <polyline points="292,205 370,205 370,190 374,190"
+                  fill="none" stroke="#555" stroke-width="1.2" marker-end="url(#a2)"/>
+
+        <!-- sphere_df → session_state (straight down) -->
+        <line x1="247" y1="218" x2="247" y2="227"
+              stroke="#555" stroke-width="1.2" marker-end="url(#a2)"/>
+
+        <!-- ═══ RIGHT SIDE ═══ -->
+
+        <!-- Plotly Render: x=374 y=132 w=106 h=28 cx=427 cy=146 -->
+        <rect x="374" y="132" width="106" height="28" rx="3"
+              fill="#ede7f6" stroke="#512da8" stroke-width="1.2"/>
+        <text x="427" y="150" text-anchor="middle" fill="#311b92"
+              font-weight="bold">Plotly Render</text>
+
+        <!-- Plotly Render → Visualisation -->
+        <line x1="427" y1="160" x2="427" y2="176"
+              stroke="#555" stroke-width="1.2" marker-end="url(#a2)"/>
+
+        <!-- Visualisation: x=374 y=176 w=106 h=28 cx=427 cy=190 -->
+        <rect x="374" y="176" width="106" height="28" rx="3"
+              fill="#ede7f6" stroke="#512da8" stroke-width="1.2"/>
+        <text x="427" y="194" text-anchor="middle" fill="#311b92">Visualisation</text>
+
+        <!-- Visualisation → Trustworthiness -->
+        <line x1="427" y1="204" x2="427" y2="227"
+              stroke="#555" stroke-width="1.2" marker-end="url(#a2)"/>
+
+        <!-- ═══ BOTTOM OUTPUTS ═══ -->
+
+        <!-- session_state: cx=247 cy=240 rx=46 ry=13 (right edge x=293) -->
+        <ellipse cx="247" cy="240" rx="46" ry="13"
+                 fill="#fff3e0" stroke="#e65100" stroke-width="1.2"/>
+        <text x="247" y="244" text-anchor="middle" fill="#bf360c"
+              font-size="9.5">session_state</text>
+
+        <!-- session_state → Trustworthiness (right) -->
+        <!-- Trustworthiness left edge: cx=427 - rx=60 = 367 -->
+        <line x1="293" y1="240" x2="367" y2="240"
+              stroke="#555" stroke-width="1.2" marker-end="url(#a2)"/>
+
+        <!-- Trustworthiness Score: cx=427 cy=240 rx=60 ry=13 -->
+        <ellipse cx="427" cy="240" rx="60" ry="13"
+                 fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.2"/>
+        <text x="427" y="244" text-anchor="middle" fill="#1b5e20"
+              font-size="9.5">Trustworthiness Score</text>
+
+      </svg>
+
+      <div class="fig2-caption">
+        <b>Fig 2:</b> Overview of<br>the Inference Step<br>of the UMAP<br>Peptide Embedding<br>Algorithm
+      </div>
+    </div>
+
+  </div><!-- /slide-body -->
+</div><!-- /slide -->
+</body>
+</html>
